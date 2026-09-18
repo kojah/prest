@@ -1371,6 +1371,7 @@ func (adapter *postgres) BatchInsertValues(SQL string, values ...interface{}) (s
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
+	defer rows.Close()
 	for rows.Next() {
 		if err = rows.Err(); err != nil {
 			slog.Error("log details", "err", err)
@@ -1414,6 +1415,7 @@ func (adapter *postgres) BatchInsertValuesCtx(ctx context.Context, SQL string, v
 		slog.Error("log details", "err", err)
 		return &scanner.PrestScanner{Error: err}
 	}
+	defer rows.Close()
 	for rows.Next() {
 		if err = rows.Err(); err != nil {
 			slog.Error("log details", "err", err)
@@ -1553,11 +1555,18 @@ func (adapter *postgres) delete(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 	if strings.Contains(SQL, "RETURNING") {
 		var rows *sql.Rows
 		if ctx != nil {
-			rows, _ = stmt.QueryContext(ctx, params...)
+			rows, err = stmt.QueryContext(ctx, params...)
 		} else {
-			rows, _ = stmt.Query(params...)
+			rows, err = stmt.Query(params...)
 		}
-		cols, _ := rows.Columns()
+		if err != nil {
+			return &scanner.PrestScanner{Error: err}
+		}
+		defer rows.Close()
+		cols, err := rows.Columns()
+		if err != nil {
+			return &scanner.PrestScanner{Error: err}
+		}
 		var data []map[string]interface{}
 		for rows.Next() {
 			columns := make([]interface{}, len(cols))
@@ -1661,11 +1670,18 @@ func (adapter *postgres) update(ctx context.Context, db *sqlx.DB, tx *sql.Tx, SQ
 	if strings.Contains(SQL, "RETURNING") {
 		var rows *sql.Rows
 		if ctx != nil {
-			rows, _ = stmt.QueryContext(ctx, params...)
+			rows, err = stmt.QueryContext(ctx, params...)
 		} else {
-			rows, _ = stmt.Query(params...)
+			rows, err = stmt.Query(params...)
 		}
-		cols, _ := rows.Columns()
+		if err != nil {
+			return &scanner.PrestScanner{Error: err}
+		}
+		defer rows.Close()
+		cols, err := rows.Columns()
+		if err != nil {
+			return &scanner.PrestScanner{Error: err}
+		}
 		var data []map[string]interface{}
 		for rows.Next() {
 			columns := make([]interface{}, len(cols))
